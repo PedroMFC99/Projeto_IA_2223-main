@@ -1,0 +1,532 @@
+;;;; jogo.lisp
+;;;; IA - 2022/ 2023
+;;;; Diogo Letras - 202002529 & Pedro Cunha - 202000757
+;;;; Implementa a interacao com o utilizador incluindo a escrita e leitura de ficheiros
+
+;;;; Constantes:
+(defvar *player1* 1)
+(defvar *player2* 2)
+(defvar *start-time* 0)
+
+;;; Extra Functions
+
+(defun initial-board (&optional stream)
+  "Function that initializes the board used in the game. Also has the possibility of receiving an external file to load another board"
+ (cond ((null stream) '(
+	(
+		(0 0 0 0 0 0) 
+		(0 0 0 0 0 0) 
+		(0 0 0 0 0 0) 
+		(0 0 0 0 0 0) 
+		(0 0 0 0 0 0) 
+		(0 0 0 0 0 0)
+	)
+	(
+		(0 0 0 0 0) 
+		(0 0 0 0 0) 
+		(0 0 0 0 0) 
+		(0 0 0 0 0) 
+		(0 0 0 0 0) 
+		(0 0 0 0 0) 
+		(0 0 0 0 0)
+	)
+))
+		(t (read stream)))
+)
+
+
+;; atoms-list 
+(defun atoms-list(list) 
+"Returns a list with all the atoms in the main list"
+	(cond
+		((null list) nil)
+		(T (cond 
+				((atom (car list)) (cons (car list) (atoms-list (cdr list))))
+				(T (append (atoms-list (car list)) (atoms-list (cdr list))))
+			)
+		)
+	)
+)
+
+;;completed-board-p
+(defun completed-board-p (list) 
+"Checks if the board is completed"
+	(let* ((new-list (atoms-list list))
+			(dimension (length new-list))
+			(result (apply '+ (mapcar #'(lambda (n)
+							(cond
+								((= n 0) 0)
+								(T 1)
+							)
+			) new-list))))
+		(cond
+			((= dimension result) T)
+			(T nil)
+		)
+	)
+)
+
+;; read-keyboard
+(defun read-keyboard ()
+"Reads inputs from the keyboard"
+	(read)
+)
+
+;;; Initialization & Menus
+
+;;start
+(defun start ()
+"Initializes the program."
+	(let 	(
+				(path (insert-directory))
+			)
+			(compile-load-files path)
+	)
+)
+
+;;insert-directory
+(defun insert-directory ()
+"Prompts the user to enter the path to a folder containing project files."
+	(format t "~%Please, introduce the file's path~%")
+	(format nil (read-line)
+ )
+)
+
+;;compile-load-files
+(defun compile-load-files (path)
+"Compiles & loads the necessary files for the program to run."
+  	(let 	(
+				(puzzle-file (concatenate 'string path "\\puzzle.lisp"))
+				(search-file (concatenate 'string path "\\algoritmo.lisp"))
+				(puzzle-compiled (concatenate 'string path "\\puzzle.64ofasl"))
+				(search-compiled (concatenate 'string path "\\algoritmo.64ofasl"))
+			)
+			(compile-file puzzle-file)
+			(compile-file search-file)
+			(load puzzle-compiled)
+			(load search-compiled)
+			(main-menu path)
+	)
+)
+
+;; main-menu
+(defun main-menu (path)
+  "Draws the main menu of the application."
+  (loop
+    (format t "~%> ______________________________________________________________ ")
+    (format t "~%>|     DOTS AND BOXES PUZZLE (BY PEDRO CUNHA & DIOGO LETRAS)    |")
+    (format t "~%>|                                                              |")
+    (format t "~%>|     1. Start game                                       |")
+    (format t "~%>|     2. Check puzzle rules (tutorial)                         |")
+    (format t "~%>|     3. Quit                                                  |")
+    (format t "~%>|                                                              |")
+    (format t "~%> ______________________________________________________________ ")
+    (format t "~%> option")
+    (format t "~%> ")
+
+    (let ((option (read-keyboard)))
+      (cond
+       ((not (numberp option)) (main-menu path))
+       ((and (<= option 3) (>= option 1))
+        (cond
+         ((= option 1) (start-game path))
+         ((= option 2) (puzzle-rules))
+         ((= option 3) (format t "See ya!") (return))
+         ))
+       (T (format t "~%> Invalid option!")
+          (format t "~%> Insert a valid option: [1, 2]")
+          (fresh-line)
+          (format t "~%")
+        )
+		)
+	)
+	)
+)
+
+;; puzzle-rules
+(defun puzzle-rules() 
+"Draws the rules of 'dots and boxes'"
+	(format t "~%> 
+______________________________________________________________ Dots and Boxes Puzzle Rules ____________________________________________________________
+|           The objective of the puzzle is to arrange the arcs on the board in such a way that a certain number of boxes are formed and closed.         |
+|                                                                                                                                                       |
+|                                           When the number of boxes to close is reached, the puzzle is solved.                                         |
+|                                                                                                                                                       |
+| Therefore, solving the puzzle consists of adding a sucession of dots that allows reaching a state where the number of boxes to be closed is reached.  |
+|                                                                                                                                                       |
+| ***Note***: A closed box is when two horizontal lines and two vertical lines are added between four adjacent dots, therefore generating a closed box' |
+_______________________________________________________________________________________________________________________________________________________~%~%"
+	)
+)
+
+;;start-game
+(defun start-game(path)
+  "Draws a menu with all possible types of games."
+  (loop
+    (format t "~%> --------------------------------------------------------------------")
+    (format t "~%>|         DOTS AND BOXES PUZZLE (BY PEDRO CUNHA & DIOGO LETRAS)      |")
+    (format t "~%>|                                                                    |")
+    (format t "~%>|            1. Human vs PC                                          |")
+    (format t "~%>|            2. PC vs PC 			                                   |") 
+    (format t "~%>|            3. Go back	                                           |")		
+    (format t "~%>|                                                                    |")
+    (format t "~%> --------------------------------------------------------------------")
+    (format t "~%> option")
+    (format t "~%> ")	
+    (let ((option (read-keyboard)))
+      (cond
+       ((not (numberp option)) (start-game path))		
+       ((and (<= option 3) (>= option 1)) 
+        (cond
+         ((= option 1) (start-game-human-pc path))
+         ((= option 2) (start-game-pc-pc path))
+         ((= option 3) (return))
+         ))
+       (T (format t "~%> Invalid option!")
+          (format t "~%> Choose a valid option: [1, 2]")
+          (format t "~%  ")
+        )
+		)
+	)
+	)
+)
+
+;; start-game-human-pc	  
+(defun start-game-human-pc (path) 
+"Asks to start the game as player1 or not."
+  (setf *alpha-prune* 0)
+  (setf *beta-prune* 0)
+  (setf *pc-play* nil) 
+  (setf *analyzed-nodes* 0)
+  (setf *start-time* 0)
+  (if (y-or-n-p "Do you wish to start the game as player1? (y/n)")
+	   (human-play (initial-board) *player1* 0 0 path)
+	   (computer-play (initial-board) *player2* 0 0 path))	    
+)
+
+;;; Human vs Computer 
+
+;; human-play
+(defun human-play (board piece num-boxes-p1 num-boxes-p2 path)
+"Makes the human play."
+(let* (		(play (read-play board)) 
+			(new-board (make-play board piece (first play) (second play) (third play)))						
+			(num-closed-boxes-old (num-closed-boxes board))					
+			(num-closed-boxes-board (num-closed-boxes  new-board))			
+			(num-boxes-player1 (+ num-boxes-p1 (- num-closed-boxes-board num-closed-boxes-old)))
+		)
+			(format t "~%Num Boxes Player1: ~A~%" num-boxes-p1)
+			(format t "~%Num Boxes Player2: ~A~%" num-boxes-p2) 
+			(cond				
+				((winner-p new-board num-closed-boxes-board piece num-boxes-player1 num-boxes-p2) (format t "~&You Won!"))																																					
+				((completed-board-p new-board)(format t "~%&It's a draw!.~%"))					
+				(
+					(and 
+						(= piece *player1*) (> num-closed-boxes-board num-closed-boxes-old)
+					)
+						(print-board new-board)
+						(human-play new-board piece num-boxes-player1 num-boxes-p2 path)
+				)						
+				(T (progn(computer-play new-board (switch-piece piece) num-boxes-player1 num-boxes-p2 path)))
+		)
+    )
+)
+
+;;computer-play
+(defun computer-play (board piece num-boxes-p1 num-boxes-p2 path &optional (time-play (get-universal-time))) 
+"Makes the computer play."
+	(let* (		
+			(alphabeta-value (alpha-beta (create-node board 0 0 num-boxes-p1 num-boxes-p2) 3 piece 'evaluation-function))
+			(new-board (get-node-state *pc-play*))
+			(num-closed-boxes-board-old (num-closed-boxes board))
+			(num-closed-boxes-board (num-closed-boxes  new-board))
+			(num-boxes-player2 (+ num-boxes-p2 (- num-closed-boxes-board num-closed-boxes-board-old)))			
+			(print-winner(winner-p new-board num-closed-boxes-board piece num-boxes-p1 num-boxes-player2))
+			(stats (write-stats new-board alphabeta-value print-winner path))
+			
+		)
+		(format t "~%new-board ~a:" new-board)
+		(progn				
+			(cond				
+				((winner-p new-board num-closed-boxes-board piece num-boxes-p1 num-boxes-player2) (progn
+																															(format t "~&You won!")
+																															(format t "~&Spent time:~a"*start-time*)
+																															stats
+																															)
+																															)
+				((completed-board-p new-board)(progn (format t "~&It's a draw!") (format t "~&Spent time:~a"*start-time*) stats))
+				(
+					(and 
+						(= piece *player2*) (> num-closed-boxes-board num-closed-boxes-board-old)
+					)
+						(computer-play new-board piece num-boxes-p1 num-boxes-player2 path time-play)
+				)						
+				(T (progn
+						(setf *start-time* (+ *start-time* (- (get-universal-time) time-play)))
+						(format t "~%Time ~a:" *start-time*) (format t "seconds~%")
+						(print-board new-board)
+						(human-play new-board (switch-piece piece) num-boxes-p1 num-boxes-player2 path)
+					)
+				)
+			)
+			
+		)
+	)
+)
+
+;;; Computer vs Computer
+
+;; start-game-pc-pc
+(defun start-game-pc-pc (path) 
+"Asks to start the game as player1 or not."
+  (setf *alpha-prune* 0)
+  (setf *beta-prune* 0)
+  (setf *pc-play* nil) 
+  (setf *analyzed-nodes* 0)
+  (setf *start-time* 0)
+	(computer-computer-play (initial-board) *player1* 0 0 path)
+	(computer-computer-play (initial-board) *player2* 0 0 path)	    
+)
+
+;;computer-computer-play
+(defun computer-computer-play (board piece num-boxes-p1 num-boxes-p2 path &optional (time-play (get-universal-time))) 
+  "Makes the computer play."
+  (let* (
+         (alphabeta-value (alpha-beta (create-node board 0 0 num-boxes-p1 num-boxes-p2) 3 piece 'evaluation-function))
+         (new-board (get-node-state *pc-play*))
+         (num-closed-boxes-board-old (num-closed-boxes board))
+         (num-closed-boxes-board (num-closed-boxes  new-board))
+         (num-boxes-player2 (+ num-boxes-p2 (- num-closed-boxes-board num-closed-boxes-board-old)))			
+         (print-winner (winner-p new-board num-closed-boxes-board piece num-boxes-p1 num-boxes-player2))
+         (stats (write-stats new-board alphabeta-value print-winner path))
+		 
+         )
+    (cond				
+     ((winner-p new-board num-closed-boxes-board piece num-boxes-p1 num-boxes-player2) 
+      (format t "~&Spent time:~a"*start-time*)
+      stats)
+     ((completed-board-p new-board)
+      (format t "~&Spent time:~a"*start-time*) 
+      stats)
+     ((and 
+       (= piece *player2*) (> num-closed-boxes-board num-closed-boxes-board-old))
+      (computer-computer-play new-board piece num-boxes-p1 num-boxes-player2 path time-play))				
+     (T 
+      (setf *start-time* (+ *start-time* (- (get-universal-time) time-play)))
+      (format t "~%Time ~a:" *start-time*) (format t "seconds~%")
+      (print-board new-board)
+      (computer-computer-play new-board (switch-piece piece) num-boxes-p1 num-boxes-player2 path))
+     )
+	)
+)
+
+;; winner-p
+(defun winner-p (board new-num-boxes piece boxes-player1 boxes-player2)
+"Verifies the winner of the game."
+	(let* (
+			(num-lines (num-lines-board board))
+			(num-columns (num-columns-board board))
+			(num-max-boxes (* num-lines num-columns))
+			(num-boxes-to-win (cond ((evenp num-max-boxes) (+ (/ num-max-boxes 2) 1)) (T (/ (+ num-max-boxes 1) 2))))
+			(result (>= new-num-boxes num-boxes-to-win))
+		)
+		(cond
+			(result (cond 
+								((and (= piece *player1*) (> boxes-player1 boxes-player2)) *player1*)
+								((and (= piece *player2*) (< boxes-player1 boxes-player2)) *player2*)))
+			(T nil)					
+		)
+	)
+)
+
+;; read-play
+(defun read-play (board)
+  "Reads a play and verifies if it is possible or not. The play must be (horizontal-arc or vertical-arc) and the board position between (1 e 7)"
+  (format t "~&Your play: ")
+  (let*  ( 
+		 (operator (read-operator))
+		 (x (read-value-x 'x))
+		 (y (read-value-y 'y)) 
+		)
+	(cond
+  ((or
+    (and (equal operator 'insert-horizontal-arc) (or (eq (nth (- y 1) (nth (- x 1) (first board))) 1) (eq (nth (- y 1) (nth (- x 1) (first board))) 2)))
+    (and (equal operator 'insert-vertical-arc) (or (eq (nth (- y 1) (nth (- x 1) (second board))) 1) (eq (nth (- y 1) (nth (- x 1) (second board))) 2))))
+   (format t "~&This house is already occupied.")
+   (read-play board))
+  (t (list operator x y)))
+
+  )
+)
+
+;;read-operator
+(defun read-operator ()
+ "Reads the operator that the user wants."
+	(format t "~%> ---------------------------------------------------------")
+	(format t "~%>|        			 Choose a type of play			        |")
+	(format t "~%>|                                                         |")
+	(format t "~%>|            1. Insert an horizontal arc                  |")     	
+	(format t "~%>|            2. Insert an vertical arc                    |")
+	(format t "~%>|                                                         |")
+	(format t "~%> ---------------------------------------------------------")
+	(format t "~%> option")
+	(format t "~%> ")
+	  (let ((read-operator (read)))
+			(cond
+			 ((or (not (integerp read-operator))
+						 (< read-operator 1) (> read-operator 2))
+			   (format t "~&Invalid operator.")(read-operator))
+			   (T (cond
+				   ((= 1 read-operator) 'insert-horizontal-arc)
+				   (T 'insert-vertical-arc)))
+			)
+		)
+)
+
+;;read-value-x
+(defun read-value-x (value) 
+"Reads the X coordinate in which the user wants to insert an arc."
+  (format t "~&value of ~A [1 <= ~A <= 7]: " value value)
+  (let ((read-value (read)))
+		(cond
+			(
+				(or 
+					(not(integerp read-value))
+					(< read-value 1) (> read-value 8)	
+				)			
+				(format t "~&Invalid X coordinate.")(read-value-x value)
+			)
+		   (T read-value)
+		)
+	)
+)
+
+;;read-value-y
+(defun read-value-y (value) 
+"Reads the Y coordinate in which the user wants to insert an arc."
+  (format t "~&value of ~A [1 <= ~A <= 6]: " value value)
+  (let ((read-value (read)))
+		(cond
+			(
+				(or 
+					(not(integerp read-value))
+					(< read-value 1) (> read-value 7)
+				)			
+				(format t "~&Invalid Y coordinate.")(read-value-y value)
+			)
+		   (T read-value)
+		)
+	)
+)
+
+;;; make-play
+(defun make-play (board piece operator x y)
+"Makes a play based on the two possible operators, inserting a piece in the (x,y) coordinates on the board."
+	(funcall operator x y piece board)
+)
+
+;;; Printing Board Functions
+
+;;print-board
+(defun print-board (board) 
+  "Prints the board"
+  (let ((lines (first board)) 
+        (columns (append (rotate (second board)))))
+		(print-line (first lines))
+		(print-column (first columns))
+		(print-line (second lines))
+		(print-column (second columns))
+		(print-line (third lines))
+		(print-column (third columns))
+		(print-line (fourth lines))
+		(print-column (fourth columns))
+		(print-line (fifth lines))
+		(print-column (fifth columns))
+		(print-line (sixth lines))
+		(print-column (sixth columns))
+
+		(print-column (seventh columns))
+
+
+)
+)
+
+;print-line
+(defun print-line (list)
+ "Prints a formatted line"
+  (format t ". ~A . ~A . ~A . ~A . ~A . ~A . ~%"
+          (format-horizontal-arc (first list))
+          (format-horizontal-arc (second list))
+          (format-horizontal-arc (third list))
+          (format-horizontal-arc (fourth list))
+          (format-horizontal-arc (fifth list))
+          (format-horizontal-arc (sixth list))
+	)
+)
+
+;;print-column
+(defun print-column (list)
+"Prints a formatted column"
+  (format t "~A   ~A   ~A   ~A   ~A   ~A   ~A ~%"
+          (format-vertical-arc (first list))
+          (format-vertical-arc (second list))
+          (format-vertical-arc (third list))
+          (format-vertical-arc (fourth list))
+          (format-vertical-arc (fifth list))
+          (format-vertical-arc (sixth list))
+          (format-vertical-arc (seventh list))
+	)
+)
+
+;; format-horizontal-arc
+(defun format-horizontal-arc (value)
+  "Converts integers of horizontal arcs to symbols for visibility purposes. Player1 -> ___ & Player2 -> ..."
+  (cond ((equal value 1) "___")
+		((equal value 2) "...")
+		(t "   ")
+	)
+)
+
+;; format-vertical-arc
+(defun format-vertical-arc (value)
+  "Converts integers of vertical arcs to symbols for visibility purposes. Player1 -> | & Player2 -> ."
+  (cond ((equal value 1) "|  ")
+		((equal value 2) ".  ")
+		(t "   ")
+	)
+)
+
+;;rotate
+(defun rotate (matrix) 
+"Makes the transpose of a matrix."
+  (apply #'mapcar #'list matrix)
+)
+
+;;; Statistics
+
+;;write-stats
+(defun write-stats (board alphabeta winner path) 
+"Prints stats in console and in a log.dat file."	
+		(with-open-file (file (concatenate 'string path "\\log.dat")
+							:direction :output
+							:if-exists :append 
+							:if-does-not-exist :create)
+
+			;; Display in LOG.dat file
+			(format file "~%Winner: ~s ~%" winner)
+			(format file "~%Board: ~s ~%" board)
+			(format file "~%Num Closed Boxes: ~s ~%" (num-closed-boxes board))
+			(format file "~%Alpha Prunes: ~s ~%" *alpha-prune*)
+			(format file "~%Beta Prunes: ~s ~%" *beta-prune*)
+			(format file "~%Analyzed Nodes: ~s ~%" *analyzed-nodes*)
+			(format file "~%Spent Time: ~s ~%" *start-time*)
+			(format file "___________________________________________________~%~%~%")
+		)	
+			;; Display in console
+			(format t "~%Winner: ~s ~%" winner)
+			(format t "~%Board: ~s ~%" board)
+			(format t "~%Num Closed Boxes: ~s ~%" (num-closed-boxes board))
+			(format t "~%Alpha Prunes: ~s ~%" *alpha-prune*)
+			(format t "~%Beta Prunes: ~s ~%" *beta-prune*)
+			(format t "~%Analyzed Nodes: ~s ~%" *analyzed-nodes*)
+)
